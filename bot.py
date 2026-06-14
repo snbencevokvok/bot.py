@@ -1,20 +1,32 @@
 import discord
-from discord.ext import tasks, commands
-import asyncio
+from discord.ext import commands
 import os
+import threading
+from flask import Flask
 
 # --- KONFIGURÁCIÓ ---
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD_ID = 1470064782471200987
-CHANNEL_ID = 1511071871465029632
 MEMBER_ROLE_ID = 1481671590189072455
-VISITOR_ROLE_ID = 1481673410789642240
 
+# --- FLASK WEBSZERVER (az ébren tartáshoz) ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_flask():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# Szerver elindítása külön szálon
+t = threading.Thread(target=run_flask)
+t.start()
+
+# --- BOT BEÁLLÍTÁS ---
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-intents.presences = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 active_members = set()
 
@@ -25,28 +37,20 @@ class ActivityView(discord.ui.View):
 
     @discord.ui.button(label="I'm Active", style=discord.ButtonStyle.green, custom_id="persistent_active_button")
     async def active_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Jelzi a Discordnak, hogy megkaptuk az interakciót, ezzel elkerüljük a "Sikertelen interakció" hibát
+        # Defer: jelzi a Discordnak, hogy a bot dolgozik, nem fagyott le
         await interaction.response.defer(ephemeral=True)
-        
         active_members.add(interaction.user.id)
-        
-        # Utólagos válasz
         await interaction.followup.send("Aktivitásod rögzítve.", ephemeral=True)
 
     @discord.ui.button(label="View Report", style=discord.ButtonStyle.blurple, custom_id="persistent_report_button")
     async def report_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Jelzi a Discordnak, hogy megkaptuk az interakciót
         await interaction.response.defer(ephemeral=True)
-        
-        member_role = interaction.guild.get_role(MEMBER_ROLE_ID)
-        # Itt folytatódik a többi logikád...
-        
+        # Ide írhatod a jelentés lekérdezésének logikáját
         await interaction.followup.send("Jelentés előkészítve.", ephemeral=True)
 
 @bot.event
 async def on_ready():
-    # Regisztráljuk a nézetet, hogy a gombok újraindulás után is működjenek
     bot.add_view(ActivityView())
-    print(f'{bot.user} online és készen áll!')
+    print(f'{bot.user} online!')
 
 bot.run(TOKEN)
