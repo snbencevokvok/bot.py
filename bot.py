@@ -53,4 +53,9 @@ async def on_ready():
     bot.add_view(ActivityView())
     print(f'{bot.user} online!')
 
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def setup_activity(ctx):
+    await ctx.send("2-hetes Aktivitás Ellenőrzés\nKérlek, nyomd meg a gombot:", view=ActivityView())
+
 bot.run(TOKEN)
